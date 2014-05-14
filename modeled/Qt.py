@@ -47,10 +47,15 @@ class QtMeta(mobject.type):
                     QClass, prop = DEFAULT_WIDGETS_AND_PROPERTIES[
                       member.mtype]
                     q = QClass()
-                    getter = object.__getattribute__(q, prop)
-                    setter = partial(member.__set__, self)
-                    getattr(q, prop + 'Changed').connect(
-                      lambda: setter(getter()))
+                    qgetter = object.__getattribute__(q, prop)
+                    qsetter = object.__getattribute__(
+                      q, 'set' + prop[0].upper() + prop[1:])
+                    msetter = partial(member.__set__, self)
+                    getattr(q, prop + 'Changed').__add__(
+                      lambda: msetter(qgetter()))
+                    member.changed.append(
+                      lambda mobj, value: qsetter(value))
+                    qsetter(member.__get__(self))
                     return q
 
                 for name, member in self.model.members:
