@@ -24,6 +24,8 @@ __all__ = ['Q']
 from datetime import datetime
 from functools import partial
 
+from moretools import cached
+
 from modeled import mobject
 
 from QtQuery import Q
@@ -38,6 +40,7 @@ DEFAULT_WIDGETS_AND_PROPERTIES = {
 
 
 class QtMeta(mobject.type):
+    @cached
     def __getitem__(cls, mclass):
         class Qt(cls, mclass):
             def __init__(self, **membervalues):
