@@ -26,7 +26,7 @@ from functools import partial
 
 from moretools import cached
 
-from modeled import mobject
+from modeled import mobject, MemberError
 
 from QtQuery import Q
 
@@ -59,7 +59,10 @@ class _QtMeta(mobject.type):
                       lambda: msetter(qgetter()))
                     member.changed.append(
                       lambda mobj, value: qsetter(value))
-                    qsetter(member.__get__(self))
+                    try:
+                        qsetter(member.__get__(self))
+                    except MemberError: # No assigned/default value
+                        pass
                     return q
 
                 for name, member in self.model.members:
