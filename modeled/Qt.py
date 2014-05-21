@@ -36,7 +36,7 @@ class _QtMeta(mobject.type):
     def DEFAULT_WIDGETS_AND_PROPERTIES(Q):
         return {
           int: (Q.SpinBox, 'value'),
-          float: (Q.LineEdit, 'text'),
+          float: (Q.DoubleSpinBox, 'value'),
           str: (Q.LineEdit, 'text'),
           datetime: (Q.DateTimeEdit, 'dateTime'),
           }
