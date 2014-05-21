@@ -19,7 +19,7 @@
 
 from six import with_metaclass
 
-__all__ = ['Q']
+__all__ = ['Qt']
 
 from datetime import datetime
 from functools import partial
@@ -31,15 +31,16 @@ from modeled import mobject
 from QtQuery import Q
 
 
-DEFAULT_WIDGETS_AND_PROPERTIES = {
-  int: (Q.SpinBox, 'value'),
-  float: (Q.LineEdit, 'text'),
-  str: (Q.LineEdit, 'text'),
-  datetime: (Q.DateTimeEdit, 'dateTime'),
-}
+class _QtMeta(mobject.type):
+    @staticmethod
+    def DEFAULT_WIDGETS_AND_PROPERTIES(Q):
+        return {
+          int: (Q.SpinBox, 'value'),
+          float: (Q.LineEdit, 'text'),
+          str: (Q.LineEdit, 'text'),
+          datetime: (Q.DateTimeEdit, 'dateTime'),
+          }
 
-
-class QtMeta(mobject.type):
     @cached
     def __getitem__(cls, mclass):
         class Qt(cls, mclass):
@@ -47,7 +48,7 @@ class QtMeta(mobject.type):
                 mclass.__init__(self, **membervalues)
 
                 def widget(member):
-                    QClass, prop = DEFAULT_WIDGETS_AND_PROPERTIES[
+                    QClass, prop = cls.DEFAULT_WIDGETS_AND_PROPERTIES[
                       member.mtype]
                     q = QClass()
                     qgetter = object.__getattribute__(q, prop)
@@ -69,5 +70,14 @@ class QtMeta(mobject.type):
         return Qt
 
 
-class Qt(with_metaclass(QtMeta, object)):
-    pass
+def Qt(qmodule):
+    _Q = Q(qmodule)
+
+    class QtMeta(_QtMeta):
+        DEFAULT_WIDGETS_AND_PROPERTIES = (
+          _QtMeta.DEFAULT_WIDGETS_AND_PROPERTIES(_Q))
+
+    class Qt(with_metaclass(QtMeta, object)):
+        Q = _Q
+
+    return Qt
