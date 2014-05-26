@@ -24,14 +24,12 @@ __all__ = ['Qt']
 from datetime import datetime
 from functools import partial
 
-from moretools import cached
-
-from modeled import mobject, MemberError
+from modeled import MemberError, Adapter
 
 from QtQuery import Q
 
 
-class _QtMeta(mobject.type):
+class _QtMeta(Adapter.type):
     @staticmethod
     def DEFAULT_WIDGETS_AND_PROPERTIES(Q):
         return {
@@ -41,36 +39,28 @@ class _QtMeta(mobject.type):
           datetime: (Q.DateTimeEdit, 'dateTime'),
           }
 
-    @cached
-    def __getitem__(cls, mclass):
-        class Qt(cls, mclass):
-            def __init__(self, **membervalues):
-                mclass.__init__(self, **membervalues)
+class _Qt(with_metaclass(_QtMeta, Adapter)):
+    def __init__(self, **membervalues):
+        def widget(member):
+            QClass, prop = type(self).DEFAULT_WIDGETS_AND_PROPERTIES[
+              member.mtype]
+            q = QClass()
+            qgetter = object.__getattribute__(q, prop)
+            qsetter = object.__getattribute__(
+              q, 'set' + prop[0].upper() + prop[1:])
+            msetter = partial(member.__set__, self)
+            getattr(q, prop + 'Changed').__add__(
+              lambda: msetter(qgetter()))
+            member.changed.append(
+              lambda mobj, value: qsetter(value))
+            try:
+                qsetter(member.__get__(self))
+            except MemberError: # No assigned/default value
+                pass
+            return q
 
-                def widget(member):
-                    QClass, prop = cls.DEFAULT_WIDGETS_AND_PROPERTIES[
-                      member.mtype]
-                    q = QClass()
-                    qgetter = object.__getattribute__(q, prop)
-                    qsetter = object.__getattribute__(
-                      q, 'set' + prop[0].upper() + prop[1:])
-                    msetter = partial(member.__set__, self)
-                    getattr(q, prop + 'Changed').__add__(
-                      lambda: msetter(qgetter()))
-                    member.changed.append(
-                      lambda mobj, value: qsetter(value))
-                    try:
-                        qsetter(member.__get__(self))
-                    except MemberError: # No assigned/default value
-                        pass
-                    return q
-
-                for name, member in self.model.members:
-                    setattr(self, name + 'Widget', widget(member))
-
-        Qt.__module__ = cls.__module__
-        Qt.__name__ = '%s[%s]' % (cls.__name__, mclass.__name__)
-        return Qt
+        for name, member in self.model.members:
+            setattr(self, name + 'Widget', widget(member))
 
 
 def Qt(qmodule):
@@ -80,7 +70,7 @@ def Qt(qmodule):
         DEFAULT_WIDGETS_AND_PROPERTIES = (
           _QtMeta.DEFAULT_WIDGETS_AND_PROPERTIES(_Q))
 
-    class Qt(with_metaclass(QtMeta, object)):
+    class Qt(with_metaclass(QtMeta, _Qt)):
         Q = _Q
 
     return Qt
