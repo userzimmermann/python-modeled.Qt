@@ -45,12 +45,13 @@ class _Qt(with_metaclass(_QtMeta, Adapter)):
             QClass, prop = type(self).DEFAULT_WIDGETS_AND_PROPERTIES[
               member.mtype]
             q = QClass()
-            qgetter = object.__getattribute__(q, prop)
+            ## qgetter = object.__getattribute__(q, prop)
             qsetter = object.__getattribute__(
               q, 'set' + prop[0].upper() + prop[1:])
             msetter = partial(member.__set__, self)
             getattr(q, prop + 'Changed').__add__(
-              lambda: msetter(qgetter()))
+              ## lambda value: msetter(qgetter()))
+              lambda value: msetter(value))
             member.changed.append(
               lambda mobj, value: qsetter(value))
             try:
