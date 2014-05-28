@@ -41,6 +41,9 @@ class _QtMeta(Adapter.type):
 
 class _Qt(with_metaclass(_QtMeta, Adapter)):
     def __init__(self, **membervalues):
+        self.q = self.Q.Object()
+        object.__setattr__(self.q.emit, 'q', self)
+
         def widget(member):
             QClass, prop = type(self).DEFAULT_WIDGETS_AND_PROPERTIES[
               member.mtype]
@@ -62,6 +65,10 @@ class _Qt(with_metaclass(_QtMeta, Adapter)):
 
         for name, member in self.model.members:
             setattr(self, name + 'Widget', widget(member))
+
+    @property
+    def emit(self):
+        return self.q.emit
 
 
 def Qt(qmodule):
