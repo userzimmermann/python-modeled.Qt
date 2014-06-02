@@ -17,7 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with modeled.Qt. If not, see <http://www.gnu.org/licenses/>.
 
-from six import with_metaclass
+from six import with_metaclass, text_type as unicode
 
 __all__ = ['Qt']
 
@@ -36,6 +36,7 @@ class _QtMeta(Adapter.type):
           int: (Q.SpinBox, 'value'),
           float: (Q.DoubleSpinBox, 'value'),
           str: (Q.LineEdit, 'text'),
+          unicode: (Q.LineEdit, 'text'),
           datetime: (Q.DateTimeEdit, 'dateTime'),
           }
 
