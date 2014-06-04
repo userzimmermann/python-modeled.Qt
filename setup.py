@@ -18,7 +18,7 @@ setup(
   author_email='zimmermann.code@gmail.com',
   url='http://bitbucket.org/userzimmermann/python-modeled',
 
-  license='LGPLv3',
+  license='GPLv3',
 
   install_requires=REQUIRES,
 
