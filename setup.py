@@ -23,7 +23,7 @@ setup(
   install_requires=REQUIRES,
 
   namespace_packages=['modeled'],
-  py_modules=[
+  packages=[
     'modeled.Qt',
     ],
 
