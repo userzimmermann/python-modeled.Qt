@@ -71,22 +71,36 @@ class _QtMeta(Adapter.type):
 
 class _Qt(with_metaclass(_QtMeta, Adapter)):
     def __init__(self, **membervalues):
-        self.q = self.Q.Object()
+        Q = self.Q
+        self.q = Q.Object()
         object.__setattr__(self.q.emit, 'q', self)
 
         def widget(member):
             if PY3 and member.mtype is bytes:
                 return None
-            QClass, prop = type(self).DEFAULT_WIDGETS_AND_PROPERTIES[
-              member.mtype]
-            q = QClass()
-            ## qgetter = object.__getattribute__(q, prop)
-            qsetter = object.__getattribute__(
-              q, 'set' + prop[0].upper() + prop[1:])
-            msetter = partial(member.__set__, self)
-            getattr(q, prop + 'Changed').__add__(
-              ## lambda value: msetter(qgetter()))
-              lambda value: msetter(value))
+            try:
+                label = member.options.qt.label
+            except AttributeError:
+                label = False
+            if label:
+                q = Q.Label()
+                if member.format:
+                    def qsetter(value):
+                        q.text = format(value, member.format)
+                else:
+                    def qsetter(value):
+                        q.text = str(value)
+            else:
+                QClass, prop = type(self).DEFAULT_WIDGETS_AND_PROPERTIES[
+                  member.mtype]
+                q = QClass()
+                ## qgetter = object.__getattribute__(q, prop)
+                msetter = partial(member.__set__, self)
+                getattr(q, prop + 'Changed').__add__(
+                  ## lambda value: msetter(qgetter()))
+                  lambda value: msetter(value))
+                qsetter = object.__getattribute__(
+                  q, 'set' + prop[0].upper() + prop[1:])
             member.changed.append(
               lambda mobj, value: qsetter(value))
             try:
