@@ -21,13 +21,16 @@
 
 .. moduleauthor:: Stefan Zimmermann <zimmermann.code@gmail.com>
 """
-from six import PY3, with_metaclass, text_type as unicode
+from six import (
+  PY3, with_metaclass, create_bound_method, text_type as unicode)
 
 __all__ = ['Qt']
 
 from inspect import getmembers
 from datetime import datetime
 from functools import partial
+
+from path import path as Path
 
 from modeled import MemberError, Adapter, ismodeledclass
 
@@ -44,6 +47,7 @@ class _QtMeta(Adapter.type):
           float: (Q.DoubleSpinBox, 'value'),
           str: (Q.LineEdit, 'text'),
           unicode: (Q.LineEdit, 'text'),
+          Path: (Q.LineEdit, 'text'),
           datetime: (Q.DateTimeEdit, 'dateTime'),
           }
 
@@ -75,7 +79,8 @@ class _Qt(with_metaclass(_QtMeta, Adapter)):
         self.q = Q.Object()
         object.__setattr__(self.q.emit, 'q', self)
 
-        def widget(member):
+        def widget(im):
+            member = im.m
             if PY3 and member.mtype is bytes:
                 return None
             try:
@@ -91,8 +96,11 @@ class _Qt(with_metaclass(_QtMeta, Adapter)):
                     def qsetter(value):
                         q.text = str(value)
             else:
-                QClass, prop = type(self).DEFAULT_WIDGETS_AND_PROPERTIES[
-                  member.mtype]
+                try:
+                    QClass, prop = type(self) \
+                      .DEFAULT_WIDGETS_AND_PROPERTIES[member.mtype]
+                except KeyError:
+                    return None
                 q = QClass()
                 ## qgetter = object.__getattribute__(q, prop)
                 msetter = partial(member.__set__, self)
@@ -101,16 +109,17 @@ class _Qt(with_metaclass(_QtMeta, Adapter)):
                   lambda value: msetter(value))
                 qsetter = object.__getattribute__(
                   q, 'set' + prop[0].upper() + prop[1:])
-            member.changed.append(
-              lambda mobj, value: qsetter(value))
+            im.changed.append(qsetter)
+              # lambda mobj, value: qsetter(value))
             try:
                 qsetter(member.__get__(self))
             except MemberError: # No assigned/default value
                 pass
             return q
 
-        for name, member in self.model.members:
-            setattr(self, name + 'Widget', widget(member))
+        for name, im in self.model.members:
+            im.qwidget = create_bound_method(widget, im)
+            # setattr(self, name + 'Widget', widget(member.m))
 
         for name, widget in self.model.widgets:
             setattr(self, name, widget())
