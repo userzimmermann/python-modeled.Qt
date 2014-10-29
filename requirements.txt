@@ -1,3 +1,4 @@
 six
+path.py
 modeled
 QtQuery
