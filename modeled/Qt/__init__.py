@@ -21,22 +21,22 @@
 
 .. moduleauthor:: Stefan Zimmermann <zimmermann.code@gmail.com>
 """
-from six import (
-  PY3, with_metaclass, create_bound_method, text_type as unicode)
+from six import with_metaclass, text_type as unicode
 
 __all__ = ['Qt']
 
 from inspect import getmembers
 from datetime import datetime
-from functools import partial
 
 from path import path as Path
+from moretools import cached
 
-from modeled import MemberError, Adapter, ismodeledclass
+from modeled import Adapter, ismodeledclass
 
 from QtQuery import Q
 
 from .widget import Widget, WidgetsDict, ismodeledwidgetclass, ismodeledwidget
+from .member import MemberQt
 
 
 class _QtMeta(Adapter.type):
@@ -75,51 +75,24 @@ class _QtMeta(Adapter.type):
 
 class _Qt(with_metaclass(_QtMeta, Adapter)):
     def __init__(self, **membervalues):
+        Qt = type(self)
         Q = self.Q
         self.q = Q.Object()
         object.__setattr__(self.q.emit, 'q', self)
 
-        def widget(im):
-            member = im.m
-            if PY3 and member.mtype is bytes:
-                return None
-            try:
-                label = member.options.qt.label
-            except AttributeError:
-                label = False
-            if label:
-                q = Q.Label()
-                if member.format:
-                    def qsetter(value):
-                        q.text = format(value, member.format)
-                else:
-                    def qsetter(value):
-                        q.text = str(value)
-            else:
-                try:
-                    QClass, prop = type(self) \
-                      .DEFAULT_WIDGETS_AND_PROPERTIES[member.mtype]
-                except KeyError:
-                    return None
-                q = QClass()
-                ## qgetter = object.__getattribute__(q, prop)
-                msetter = partial(member.__set__, self)
-                getattr(q, prop + 'Changed').__add__(
-                  ## lambda value: msetter(qgetter()))
-                  lambda value: msetter(value))
-                qsetter = object.__getattribute__(
-                  q, 'set' + prop[0].upper() + prop[1:])
-            im.changed.append(qsetter)
-              # lambda mobj, value: qsetter(value))
-            try:
-                qsetter(member.__get__(self))
-            except MemberError: # No assigned/default value
-                pass
-            return q
-
         for name, im in self.model.members:
-            im.qwidget = create_bound_method(widget, im)
-            # setattr(self, name + 'Widget', widget(member.m))
+            class instancemember(im.__class__):
+                @property
+                @cached
+                def Qt(self):
+                    return MemberQt(Qt, self)
+
+                def __getitem__(self, key):
+                    im = super(instancemember, self).__getitem__(key)
+                    im.__class__ = self.__class__
+                    return im
+
+            im.__class__ = instancemember
 
         for name, widget in self.model.widgets:
             setattr(self, name, widget())

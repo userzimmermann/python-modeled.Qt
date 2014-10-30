@@ -21,20 +21,62 @@
 
 .. moduleauthor:: Stefan Zimmermann <zimmermann.code@gmail.com>
 """
+from six import PY3
+
+__all__ = ['MemberQt']
+
+from functools import partial
+
+from modeled import MemberError
+
 from .widget import Widget
 
 
-class MemberQ(object):
+class MemberQt(object):
     __slots__ = ['Q', 'im', 'props', 'qlist']
 
-    def __init__(self, Q, im):
-        self.Q = Q
+    def __init__(self, Qt, im):
+        self.Qt = Qt
         self.im = im
         self.props = {}
         self.qlist = []
 
-    def qwidget(self, Q):
-        q = self.im.qwidget(Q, **self.props)
+    def qwidget(self, Q, **props):
+        member = self.im.m
+        if PY3 and member.mtype is bytes:
+            return None
+        try:
+            label = member.options.qt.label
+        except AttributeError:
+            label = False
+        if label:
+            q = Q.Label()
+            if member.format:
+                def qsetter(value):
+                    q.text = format(value, member.format)
+            else:
+                def qsetter(value):
+                    q.text = str(value)
+        else:
+            try:
+                QClass, prop = self.Qt \
+                  .DEFAULT_WIDGETS_AND_PROPERTIES[member.mtype]
+            except KeyError:
+                return None
+            q = QClass(**props)
+            ## qgetter = object.__getattribute__(q, prop)
+            msetter = partial(member.__set__, self)
+            getattr(q, prop + 'Changed').__add__(
+              ## lambda value: msetter(qgetter()))
+              lambda value: msetter(value))
+            qsetter = object.__getattribute__(
+              q, 'set' + prop[0].upper() + prop[1:])
+        self.im.changed.append(qsetter)
+          # lambda mobj, value: qsetter(value))
+        try:
+            qsetter(member.__get__(self))
+        except MemberError: # No assigned/default value
+            pass
         self.qlist.append(q)
         return q
 
