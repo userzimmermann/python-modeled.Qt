@@ -87,10 +87,8 @@ class _Qt(with_metaclass(_QtMeta, Adapter)):
                 def Qt(self):
                     return MemberQt(Qt, self)
 
-                def __getitem__(self, key):
-                    im = super(instancemember, self).__getitem__(key)
-                    im.__class__ = self.__class__
-                    return im
+                def qwidget(self, Q, **props):
+                    return self.Qt.qwidget(Q, **props)
 
             im.__class__ = instancemember
 
