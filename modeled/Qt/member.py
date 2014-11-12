@@ -33,12 +33,12 @@ from .widget import Widget
 
 
 class MemberQt(object):
-    __slots__ = ['Q', 'im', 'props', 'qlist']
+    __slots__ = ['Qt', 'im', 'qprops', 'qlist']
 
     def __init__(self, Qt, im):
         self.Qt = Qt
         self.im = im
-        self.props = {}
+        self.qprops = {}
         self.qlist = []
 
     def qwidget(self, Q, **props):
@@ -63,9 +63,11 @@ class MemberQt(object):
                   .DEFAULT_WIDGETS_AND_PROPERTIES[member.mtype]
             except KeyError:
                 return None
-            q = QClass(**props)
+            qprops = dict(self.qprops)
+            qprops.update(props)
+            q = QClass(**qprops)
             ## qgetter = object.__getattribute__(q, prop)
-            msetter = partial(member.__set__, self)
+            msetter = partial(member.__set__, self.im.minstance)
             getattr(q, prop + 'Changed').__add__(
               ## lambda value: msetter(qgetter()))
               lambda value: msetter(value))
@@ -74,7 +76,7 @@ class MemberQt(object):
         self.im.changed.append(qsetter)
           # lambda mobj, value: qsetter(value))
         try:
-            qsetter(member.__get__(self))
+            qsetter(member.__get__(self.im.minstance))
         except MemberError: # No assigned/default value
             pass
         self.qlist.append(q)
@@ -93,12 +95,12 @@ class MemberQt(object):
         if name in self.__slots__:
             object.__setattr__(self, name, value)
         else:
-            self.props[name] = value
+            self.qprops[name] = value
             for q in self.qlist:
                 setattr(q, name, value)
 
     def __getattr__(self, name):
-        Q = self.Q
+        Q = self.Qt.Q
         try:
             return getattr(Q(self.qlist), name)
         except KeyError:
